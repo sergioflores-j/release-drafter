@@ -82,7 +82,7 @@ module.exports = app => {
       })
     }
 
-    setActionOutput(createOrUpdateReleaseResponse, releaseInfo)
+    setActionOutput(createOrUpdateReleaseResponse)
   })
 }
 
@@ -107,7 +107,7 @@ function getInput({ config } = {}) {
   }
 }
 
-function setActionOutput(releaseResponse, { body }) {
+function setActionOutput(releaseResponse) {
   const {
     data: { id: releaseId, html_url: htmlUrl, upload_url: uploadUrl }
   } = releaseResponse
@@ -115,5 +115,4 @@ function setActionOutput(releaseResponse, { body }) {
     core.setOutput('id', releaseId.toString())
   if (htmlUrl) core.setOutput('html_url', htmlUrl)
   if (uploadUrl) core.setOutput('upload_url', uploadUrl)
-  core.setOutput('body', body)
 }
