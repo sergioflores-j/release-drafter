@@ -13,15 +13,11 @@ const core = require('@actions/core')
 
 module.exports = app => {
   app.on('push', async context => {
-    const { shouldDraft, configName, version, tag, name } = getInput()
-
     const config = await getConfig({
       app,
       context,
-      configName
+      configName: core.getInput('config-name')
     })
-
-    const { isPreRelease } = getInput({ config })
 
     if (config === null) return
 
@@ -57,12 +53,12 @@ module.exports = app => {
       config,
       lastRelease,
       mergedPullRequests: sortedMergedPullRequests,
-      version,
-      tag,
-      name,
-      isPreRelease,
-      shouldDraft
+      version: core.getInput('version') || undefined,
+      tag: core.getInput('tag') || undefined,
+      name: core.getInput('name') || undefined
     })
+
+    const shouldDraft = core.getInput('publish').toLowerCase() !== 'true'
 
     let createOrUpdateReleaseResponse
     if (!draftRelease) {
@@ -70,6 +66,7 @@ module.exports = app => {
       createOrUpdateReleaseResponse = await createRelease({
         context,
         releaseInfo,
+        shouldDraft,
         config
       })
     } else {
@@ -78,33 +75,13 @@ module.exports = app => {
         context,
         draftRelease,
         releaseInfo,
+        shouldDraft,
         config
       })
     }
 
     setActionOutput(createOrUpdateReleaseResponse, releaseInfo)
   })
-}
-
-function getInput({ config } = {}) {
-  // Returns all the inputs that doesn't need a merge with the config file
-  if (!config) {
-    return {
-      shouldDraft: core.getInput('publish').toLowerCase() !== 'true',
-      configName: core.getInput('config-name'),
-      version: core.getInput('version') || undefined,
-      tag: core.getInput('tag') || undefined,
-      name: core.getInput('name') || undefined
-    }
-  }
-
-  // Merges the config file with the input
-  // the input takes precedence, because it's more easy to change at runtime
-  return {
-    isPreRelease:
-      core.getInput('prerelease').toLowerCase() === 'true' ||
-      (!core.getInput('prerelease') && config.prerelease)
-  }
 }
 
 function setActionOutput(releaseResponse, { body }) {
