@@ -21,7 +21,7 @@ module.exports = app => {
       configName
     })
 
-    const { isPreRelease } = getInput({ config })
+    const { isPreRelease, isChangelogIgnorePrerelease } = getInput({ config })
 
     if (config === null) return
 
@@ -35,7 +35,11 @@ module.exports = app => {
       return
     }
 
-    const { draftRelease, lastRelease } = await findReleases({ app, context })
+    const { draftRelease, lastRelease } = await findReleases({
+      app,
+      context,
+      isChangelogIgnorePrerelease
+    })
     const {
       commits,
       pullRequests: mergedPullRequests
@@ -103,7 +107,11 @@ function getInput({ config } = {}) {
   return {
     isPreRelease:
       core.getInput('prerelease').toLowerCase() === 'true' ||
-      (!core.getInput('prerelease') && config.prerelease)
+      (!core.getInput('prerelease') && config.prerelease),
+    isChangelogIgnorePrerelease:
+      core.getInput('changelog-ignore-prerelease').toLowerCase() === 'true' ||
+      (!core.getInput('changelog-ignore-prerelease') &&
+        config['changelog-ignore-prerelease'])
   }
 }
 

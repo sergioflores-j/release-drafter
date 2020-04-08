@@ -1,2 +1,4 @@
-template: This isn't a Pre-release.
+template: |
+  This isn't a Pre-release.
+  $CHANGES
 prerelease: false
