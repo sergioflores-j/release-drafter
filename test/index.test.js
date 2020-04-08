@@ -428,6 +428,85 @@ Previous tag: ''
           expect.assertions(1)
         })
       })
+
+      describe('with changelogIgnorePreRelease input', () => {
+        // !WARNING there's a bug on "since" filter on the commits request, it's ignoring the date passed
+        // Method with all the test's logic, to prevent duplication
+        const overridesTest = async ({
+          changelogIgnorePreRelease,
+          expectedBody
+        } = {}) => {
+          const mockEnv = {
+            'INPUT_CHANGELOG-IGNORE-PRERELEASE': changelogIgnorePreRelease
+          }
+
+          const restoreEnv = mockedEnv(mockEnv)
+
+          getConfigMock('config-without-prerelease.yml')
+
+          nock('https://api.github.com')
+            .get(
+              '/repos/toolmantim/release-drafter-test-project/releases?per_page=100'
+            )
+            .reply(200, [
+              require('./fixtures/pre-release'),
+              require('./fixtures/release')
+            ])
+
+          nock('https://api.github.com')
+            .post('/graphql', body =>
+              body.query.includes('query findCommitsWithAssociatedPullRequests')
+            )
+            .reply(
+              200,
+              require('./fixtures/__generated__/graphql-commits-merge-commit.json')
+            )
+
+          nock('https://api.github.com')
+            .post(
+              '/repos/toolmantim/release-drafter-test-project/releases',
+              body => {
+                expect(body).toMatchObject(expectedBody)
+                return true
+              }
+            )
+            .reply(200, require('./fixtures/release'))
+
+          await probot.receive({
+            name: 'push',
+            payload: require('./fixtures/push')
+          })
+
+          expect.assertions(1)
+
+          restoreEnv()
+        }
+
+        describe('with false', () => {
+          it('uses the last prerelease as query to pullRequests filter', async () => {
+            return overridesTest({
+              changelogIgnorePreRelease: 'false',
+              configName: 'config-without-prerelease.yml',
+              expectedBody: {
+                tag_name: 'v2.0.1',
+                body: `This isn't a Pre-release.\n* 👽 Add alien technology (#1) @TimonVS\n`
+              }
+            })
+          })
+        })
+        describe('with true', () => {
+          it('dont use the last prerelease as query to pullRequests filter', async () => {
+            return overridesTest({
+              changelogIgnorePreRelease: 'true',
+              configName: 'config-without-prerelease.yml',
+              expectedBody: {
+                tag_name: 'v2.0.1',
+                body: `This isn't a Pre-release.\n* Add documentation (#5) @TimonVS\n* Update dependencies (#4) @TimonVS\n* Bug fixes (#3) @TimonVS\n* Add big feature (#2) @TimonVS\n* 👽 Add alien technology (#1) @TimonVS\n`
+              }
+            })
+          })
+        })
+      })
     })
 
     describe('with no changes since the last release', () => {
